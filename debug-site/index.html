@@ -1,0 +1,302 @@
+<head>
+  <title>Speech Sample</title>
+  <meta charset="utf-8" />
+  <link href="https://fonts.googleapis.com/css2?family=Trispace&display=swap" rel="stylesheet"> 
+  <link rel="stylesheet" href="index.css">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+</head>
+
+<body style="font-family: 'Trispace', sans-serif; font-size:20px; margin-left: 50px; margin-top: 50px; background-color: #0A192F; color: white; margin-bottom: 30px;">
+  <p style="font-size: 45px;"><i>local speech to text</i></p>
+  <p id="sttStatus">Status: </p>
+
+  <button id="startSTTButton" class="button" style="margin-bottom: 0px;">STT one sentence</button><br>
+  <button id="sttContinouslyButton" class="button" style="margin-bottom: 0px;">STT continously</button> 
+  <button id="stopSTTButton" class="button">stop</button><br>
+
+  <p id="readingLevel" style="margin-top: 10px; margin-bottom: 25px;">reading level: n/a</p>
+
+  <p style="margin-bottom: 0px;">result:</p>
+  <textarea readonly id="sttResult" style="display: inline-block;width:500px;height:200px; border-color: black; border-radius: 5px; font-family: 'Trispace', sans-serif; font-size:15px; padding: 5px;"></textarea>
+  <div class="horizontalLine"></div>
+
+  <p style="font-size: 45px;"><i>arduino speech to text</i></p>
+
+  <p id="readingLevel2" style="margin-top: 10px; margin-bottom: 25px;">reading level: n/a</p>
+
+  <p style="margin-bottom: 0px;">result:</p>
+  <textarea readonly id="sttResult2" style="display: inline-block;width:500px;height:200px; border-color: black; border-radius: 5px; font-family: 'Trispace', sans-serif; font-size:15px; padding: 5px;"></textarea>
+  <div class="horizontalLine"></div>
+
+
+
+  <p style="font-size: 45px;"><i>text to speech</i></p>
+  <button id="convertTTSButton" class="button" style="margin-bottom: 0px;">convert TTS</button><br>
+  <p style="margin-bottom: 0px;">text input:</p>
+  <textarea id="ttsInput" style="display: inline-block;width:500px;height:200px; border-color: black; border-radius: 5px; font-family: 'Trispace', sans-serif; font-size:15px; padding: 5px;"></textarea>
+
+  <script src="microsoft.cognitiveservices.speech.sdk.bundle.js"></script>
+
+  <script>
+      var authorizationEndpoint = "https://debugsite.herokuapp.com/token.php";
+      var serviceRegion = "eastus";
+      var authorizationToken;
+
+      function RequestAuthorizationToken() {
+        if (authorizationEndpoint) {
+          var a = new XMLHttpRequest();
+          a.open("GET", authorizationEndpoint);
+          a.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+          a.send("");
+          a.onload = function() {
+              var token = JSON.parse(atob(this.responseText.split(".")[1]));
+              serviceRegion = token.region;
+              authorizationToken = this.responseText;
+              sttStatus.innerHTML = "Status: Got Authorization Token";
+          }
+        }
+      }
+
+      function countSyllables(word) {
+        word = word.toLowerCase();                                    
+        if (word.length <= 3) { return 1; }    
+
+        word = word.replace(/(?:[^laeiouy]es|ed|[^laeiouy]e)$/, '');  
+        word = word.replace(/^y/, '');                                
+        return word.match(/[aeiouy]{1,2}/g).length;                 
+      }
+
+      function countWords(str) {
+         str = str.replace(/(^\s*)|(\s*$)/gi,"");
+         str = str.replace(/[ ]{2,}/gi," ");
+         str = str.replace(/\n /,"\n");
+         return str.split(' ').length;
+      }
+
+      function CalculateReadingLevel() {
+          var sttText = sttResult.innerHTML;
+          console.log(sttText);
+          let re = /\w[.?!](\s|$)/;
+
+          var sentenceCount = sttText.match(re).length;
+          var wordCount = countWords(sttText);
+          var syllableCount = countSyllables(sttText);
+          var readingScore = 206.835 - 1.015 * (wordCount/sentenceCount) - 84.6 * (syllableCount/wordCount);
+          console.log(`Reading Score: ${readingScore}`);
+          if (readingScore > 100) {
+            readingLevel.innerHTML = "reading level: < grade 5";
+          } else if (readingScore > 90) {
+            readingLevel.innerHTML = "reading level: grade 5";
+          } else if (readingScore > 80) {
+            readingLevel.innerHTML = "reading level: grade 6";
+          } else if (readingScore > 70) {
+            readingLevel.innerHTML = "reading level: grade 7";
+          } else if (readingScore > 60) {
+            readingLevel.innerHTML = "reading level: grade 8";
+          } else if (readingScore > 50) {
+            readingLevel.innerHTML = "reading level: grade 9";
+          } else if (readingScore > 40) {
+            readingLevel.innerHTML = "reading level: grade 10-11";
+          } else if (readingScore > 30) {
+            readingLevel.innerHTML = "reading level: grade 12";
+          } else {
+            readingLevel.innerHTML = "reading level: > grade 12";
+          }
+          
+      }
+
+      function CalculateReadingLevel2() {
+          var sttText = sttResult2.innerHTML;
+          console.log(sttText);
+          let re = /\w[.?!](\s|$)/;
+
+          var sentenceCount = sttText.match(re).length;
+          var wordCount = countWords(sttText);
+          var syllableCount = countSyllables(sttText);
+          var readingScore = 206.835 - 1.015 * (wordCount/sentenceCount) - 84.6 * (syllableCount/wordCount);
+          console.log(`Reading Score: ${readingScore}`);
+          if (readingScore > 100) {
+            readingLevel2.innerHTML = "reading level: < grade 5";
+          } else if (readingScore > 90) {
+            readingLevel2.innerHTML = "reading level: grade 5";
+          } else if (readingScore > 80) {
+            readingLevel2.innerHTML = "reading level: grade 6";
+          } else if (readingScore > 70) {
+            readingLevel2.innerHTML = "reading level: grade 7";
+          } else if (readingScore > 60) {
+            readingLevel2.innerHTML = "reading level: grade 8";
+          } else if (readingScore > 50) {
+            readingLevel2.innerHTML = "reading level: grade 9";
+          } else if (readingScore > 40) {
+            readingLevel2.innerHTML = "reading level: grade 10-11";
+          } else if (readingScore > 30) {
+            readingLevel2.innerHTML = "reading level: grade 12";
+          } else {
+            readingLevel2.innerHTML = "reading level: > grade 12";
+          }
+          
+      }
+  </script>
+
+  <script> 
+  setTimeout(read, 2000);
+  var sttResult2 = document.getElementById("sttResult2");
+  function read(){
+    jQuery.get('result.txt',function(data){
+      if (data.length > 0) {
+        console.log(data);
+        sttResult2.innerHTML = "";
+        sttResult2.innerHTML += data;
+        CalculateReadingLevel2();
+      }
+      
+    });
+
+    setTimeout(read, 2000);
+  }
+  
+  </script>
+  
+  <script>
+      var sttResult;
+      var sttStatus;
+      var startSTTButton;
+      var sttContinouslyButton;
+      var stopSTTButton;
+      var convertTTSButton;
+      var ttsInput;
+      var readingLevel;
+
+      var SpeechSDK;
+      var recognizer;
+
+
+      document.addEventListener("DOMContentLoaded", function () {
+          startSTTButton = document.getElementById("startSTTButton");
+          sttResult = document.getElementById("sttResult");
+          sttStatus = document.getElementById("sttStatus");
+          sttContinouslyButton = document.getElementById("sttContinouslyButton");
+          stopSTTButton = document.getElementById("stopSTTButton");
+          convertTTSButton = document.getElementById("convertTTSButton");
+          ttsInput = document.getElementById("ttsInput");
+          readingLevel = document.getElementById("readingLevel");
+
+          startSTTButton.addEventListener("click", function () {
+              startSTTButton.disabled = true;
+              sttResult.innerHTML = "";
+              var speechConfig;
+              speechConfig = SpeechSDK.SpeechConfig.fromAuthorizationToken(authorizationToken, "eastus");
+                        
+              speechConfig.speechRecognitionLanguage = "en-US";
+
+              var audioConfig  = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
+              recognizer = new SpeechSDK.SpeechRecognizer(speechConfig, audioConfig);
+            
+              recognizer.recognizeOnceAsync(
+              function (result) {
+                  startSTTButton.disabled = false;
+                  sttResult.innerHTML += result.text;
+                  window.console.log(result);
+
+                  recognizer.close();
+                  CalculateReadingLevel();
+                  recognizer = undefined;
+              },
+              function (err) {
+                  startSTTButton.disabled = false;
+                  sttResult.innerHTML += err;
+                  window.console.log(err);
+
+                  recognizer.close();
+                  CalculateReadingLevel();
+                  recognizer = undefined;
+              });
+          });
+
+          sttContinouslyButton.addEventListener("click", function () {
+              sttContinouslyButton.disabled = true;
+              stopSTTButton.disabled = false;
+
+              sttResult.innerHTML = "";
+              var speechConfig;
+              speechConfig = SpeechSDK.SpeechConfig.fromAuthorizationToken(authorizationToken, "eastus");
+                        
+              speechConfig.speechRecognitionLanguage = "en-US";
+
+              var audioConfig  = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
+              recognizer = new SpeechSDK.SpeechRecognizer(speechConfig, audioConfig);
+
+              recognizer.recognizing = (s, e) => {
+                  sttStatus.innerHTML = "Status: Recognizing STT";
+              };
+
+              recognizer.recognized = (s, e) => {
+                console.log(e.result.text);
+                  if (e.result.text != null) {
+                      sttResult.innerHTML += " " + e.result.text;
+                      CalculateReadingLevel();
+                  }
+              };
+
+              recognizer.canceled = (s, e) => {
+                  sttStatus.innerHTML = `Status: STT Cancelled, ${e.reason}`;
+
+                  if (e.reason == CancellationReason.Error) {
+                      console.log(`"CANCELED: ErrorCode=${e.errorCode}`);
+                      console.log(`"CANCELED: ErrorDetails=${e.errorDetails}`);
+                      console.log("CANCELED: Did you update the subscription info?");
+                  }
+
+                  recognizer.stopContinuousRecognitionAsync();
+                  CalculateReadingLevel();
+                  sttContinouslyButton.disabled = false;
+                  stopSTTButton.disabled = true;
+                  RequestAuthorizationToken();
+              };
+
+              recognizer.sessionStopped = (s, e) => {
+                sttStatus.innerHTML = "Status: STT Session Stopped";
+                  recognizer.stopContinuousRecognitionAsync();
+                  CalculateReadingLevel();
+                  sttContinouslyButton.disabled = false;
+                  stopSTTButton.disabled = true;
+              };
+
+              recognizer.startContinuousRecognitionAsync();
+          });
+
+          stopSTTButton.addEventListener("click", function () {
+            sttContinouslyButton.disabled = false;
+            stopSTTButton.disabled = true;
+            recognizer.stopContinuousRecognitionAsync();
+            CalculateReadingLevel();
+          });
+
+          convertTTSButton.addEventListener("click", function () {
+            var speechConfig;
+            speechConfig = SpeechSDK.SpeechConfig.fromAuthorizationToken(authorizationToken, "eastus");
+            var audioConfig = SpeechSDK.AudioConfig.fromDefaultSpeakerOutput();
+
+            var synthesizer;
+            synthesizer = new SpeechSDK.SpeechSynthesizer(speechConfig, audioConfig);
+            synthesizer.speakTextAsync(
+              ttsInput.value,
+              result => {
+                  synthesizer.close();
+              },
+              error => {
+                  console.log(error);
+                  synthesizer.close();
+            });
+          });
+
+          if (!!window.SpeechSDK) {
+              SpeechSDK = window.SpeechSDK;
+              startSTTButton.disabled = false;
+              stopSTTButton.disabled = true;
+
+              RequestAuthorizationToken();
+          }
+      });
+  </script>
+</body>
